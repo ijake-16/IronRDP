@@ -18,6 +18,7 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
   const [cursorOverrideActive, setCursorOverrideActive] = useState(false);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [unicodeMode, setUnicodeMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const desktopRef = useRef<IronRemoteDesktopElement>(null);
 
   useEffect(() => {
@@ -35,6 +36,46 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
       el.removeEventListener('ready', handleReady as EventListener);
     };
   }, [setUserInteraction]);
+
+  // Listen for fullscreen changes (user may exit with Esc key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Handle window resize - notify the RDP session of new dimensions
+  useEffect(() => {
+    if (!userInteraction) return;
+
+    const handleWindowResize = () => {
+      const { innerWidth, innerHeight } = window;
+      userInteraction.resize(innerWidth, innerHeight);
+    };
+
+    // Initial resize call
+    handleWindowResize();
+
+    window.addEventListener('resize', handleWindowResize);
+
+    return () => {
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  }, [userInteraction]);
+
+  const toggleFullScreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  };
 
   const toggleCursorKind = () => {
     if (!userInteraction) return;
@@ -63,6 +104,45 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
   return (
     <div className="remote-screen-container">
       <div className="toolbar">
+        <button onClick={toggleFullScreen} className={isFullscreen ? 'active' : ''}>
+          {isFullscreen ? (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: '5px', verticalAlign: 'middle' }}
+              >
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+              </svg>
+              Exit Fullscreen
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ marginRight: '5px', verticalAlign: 'middle' }}
+              >
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+              Fullscreen
+            </>
+          )}
+        </button>
         <button onClick={() => setShowDebugPanel(!showDebugPanel)}>
           Toggle Debug Panel
         </button>
