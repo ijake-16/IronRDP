@@ -54,14 +54,13 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
     userInteraction.setKeyboardUnicodeMode(checked);
   };
 
-  if (!visible) {
-    return null;
-  }
-
   
 
+  // Note: We always render the iron-remote-desktop element (hidden when not visible)
+  // so that it can initialize and fire the 'ready' event to set up userInteraction.
+  // This follows the same pattern as the Svelte client.
   return (
-    <div className="remote-screen-container">
+    <div className={`remote-screen-container ${!visible ? 'hidden' : ''}`}>
       <div className="toolbar">
         <button onClick={() => setShowDebugPanel(!showDebugPanel)}>
           Toggle Debug Panel
