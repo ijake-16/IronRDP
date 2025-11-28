@@ -52,10 +52,11 @@ Required to compile the IronRDP Rust crate into a WebAssembly module.
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     ```
 
-2.  **Add WASM Compilation Target:**
+2.  **Add WASM Compilation Target (if not already installed):**
     ```bash
     rustup target add wasm32-unknown-unknown
     ```
+    *   *Note:* If the target is already installed, this command will simply output `is up to date`, which is safe to ignore.
 
 3.  **Install `wasm-pack`:**
     This tool is essential for packaging Rust code for npm.
