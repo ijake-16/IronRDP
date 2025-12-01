@@ -4,14 +4,9 @@ import { useToast } from '../contexts/ToastContext';
 import type { IronError } from '../types';
 import './Login.css';
 
-// TODO: Uncomment after building WASM
-// import { preConnectionBlob, displayControl, kdcProxyUrl, init } from '/iron-remote-desktop/iron-remote-desktop-rdp.js';
-
-// Temporary placeholders until WASM is built
-declare const preConnectionBlob: (pcb: string) => any;
-declare const displayControl: (enabled: boolean) => any;
-declare const kdcProxyUrl: (url: string) => any;
-declare const init: (level: string) => Promise<void>;
+// Import RDP extension functions from the WASM module
+// This uses the alias defined in vite.config.ts pointing to ../iron-remote-desktop-rdp/dist/
+import { preConnectionBlob, displayControl, kdcProxyUrl, init } from 'iron-remote-desktop-rdp';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -43,14 +38,18 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   const startSession = async () => {
+    console.log('[Login] Starting session...');
+    
     if (!userInteraction) {
+      console.error('[Login] UserInteraction service is not initialized. The iron-remote-desktop component may not have fired the "ready" event yet.');
       showToast({
         type: 'error',
-        message: 'User interaction service not initialized',
+        message: 'User interaction service not initialized. Please wait for the page to fully load.',
       });
       return;
     }
 
+    console.log('[Login] UserInteraction service is available');
     let tokenToUse = authtoken;
 
     if (tokenToUse === '') {
@@ -145,7 +144,17 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const config = configBuilder.build();
 
     try {
+      console.log('[Login] Attempting to connect with config:', {
+        destination: hostname,
+        gateway: gatewayAddress,
+        username: username,
+        domain: domain || '(none)',
+      });
+
       const sessionInfo = await userInteraction.connect(config);
+
+      console.log('[Login] Connection successful! Session ID:', sessionInfo.sessionId);
+      console.log('[Login] Initial desktop size:', sessionInfo.initialDesktopSize);
 
       showToast({
         type: 'success',
@@ -162,17 +171,21 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       onLoginSuccess();
 
       userInteraction.setVisibility(true);
+      console.log('[Login] Session is now running...');
 
       const sessionTerminationInfo = await sessionInfo.run();
 
+      console.log('[Login] Session terminated:', sessionTerminationInfo.reason());
       showToast({
         type: 'info',
         message: `Session terminated gracefully: ${sessionTerminationInfo.reason()}`,
       });
     } catch (err) {
+      console.error('[Login] Connection failed:', err);
       updateSession(session => ({ ...session, active: false }));
 
       if (isIronError(err)) {
+        console.error('[Login] IronRDP Error backtrace:', err.backtrace());
         showToast({
           type: 'error',
           message: err.backtrace(),
@@ -189,9 +202,11 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   useEffect(() => {
     const initWasm = async () => {
       try {
-        // await init('INFO');
+        console.log('[Login] Initializing WASM module...');
+        await init('INFO');
+        console.log('[Login] WASM module initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize WASM:', error);
+        console.error('[Login] Failed to initialize WASM:', error);
       }
     };
     initWasm();
