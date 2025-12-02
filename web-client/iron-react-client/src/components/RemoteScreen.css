@@ -112,3 +112,10 @@ iron-remote-desktop {
   }
 }
 
+/* Hide the remote screen container while login is shown.
+   The element must still be in the DOM for the iron-remote-desktop
+   web component to initialize and fire its 'ready' event. */
+.remote-screen-container.hidden {
+  display: none !important;
+}
+

@@ -16,6 +16,7 @@ argv.forEach((val, index) => {
 
 const run = async (command, cwd) => {
     try {
+        console.log(`Running: ${command} in ${cwd}`);
         const buildCommand = spawn(command, { stdio: 'pipe', shell: true, cwd: cwd });
 
         buildCommand.stdout.on('data', (data) => {
@@ -63,8 +64,14 @@ const copyCoreFiles = async () => {
     }
 };
 
-// Build dependencies
+// Install and build iron-remote-desktop
+console.log('=== Building iron-remote-desktop ===');
+await run('npm install', '../iron-remote-desktop');
 await run('npm run build', '../iron-remote-desktop');
+
+// Install and build iron-remote-desktop-rdp
+console.log('=== Building iron-remote-desktop-rdp ===');
+await run('npm install', '../iron-remote-desktop-rdp');
 
 let buildCommand = 'npm run build';
 if (noWasm) {

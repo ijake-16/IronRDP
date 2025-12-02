@@ -39,7 +39,6 @@ rstest = "0.25"
 # Note: we are trying to move away from using these crates.
 # They are being kept around for now for legacy compatibility,
 # but new usage should be avoided.
-lazy_static = "1.4" # Legacy crate; prefer std::sync::LazyLock or LazyCell
 num-derive = "0.4"
 num-traits = "0.2"
 
@@ -93,6 +92,7 @@ fn_to_numeric_cast_any = "warn"
 ptr_cast_constness = "warn"
 
 # == Correctness == #
+as_conversions = "warn"
 cast_lossless = "warn"
 cast_possible_truncation = "warn"
 cast_possible_wrap = "warn"
@@ -115,6 +115,7 @@ same_name_method = "warn"
 string_slice = "warn"
 suspicious_xor_used_as_pow = "warn"
 unused_result_ok = "warn"
+missing_panics_doc = "warn"
 
 # == Style, readability == #
 semicolon_outside_block = "warn" # With semicolon-outside-block-ignore-multiline = true
@@ -126,6 +127,7 @@ empty_enum_variants_with_brackets = "warn"
 deref_by_slicing = "warn"
 multiple_inherent_impl = "warn"
 map_with_unused_argument_over_ranges = "warn"
+partial_pub_fields = "warn"
 trait_duplication_in_bounds = "warn"
 type_repetition_in_bounds = "warn"
 checked_conversions = "warn"
@@ -139,8 +141,12 @@ unused_self = "warn"
 useless_let_if_seq = "warn"
 string_add = "warn"
 range_plus_one = "warn"
-# TODO: self_named_module_files = "warn"
+self_named_module_files = "warn"
 # TODO: partial_pub_fields = "warn" (should we enable only in pdu crates?)
+redundant_type_annotations = "warn"
+unnecessary_self_imports = "warn"
+try_err = "warn"
+rest_pat_in_fully_bound_structs = "warn"
 
 # == Compile-time / optimization == #
 doc_include_without_cfg = "warn"

@@ -231,7 +231,7 @@ impl Encode for SolidFillPdu {
 
         dst.write_u16(self.surface_id);
         self.fill_pixel.encode(dst)?;
-        dst.write_u16(self.rectangles.len() as u16);
+        dst.write_u16(cast_length!("number of rectangles", self.rectangles.len())?);
 
         for rectangle in self.rectangles.iter() {
             rectangle.encode(dst)?;
@@ -976,6 +976,10 @@ pub enum PixelFormat {
 }
 
 impl PixelFormat {
+    #[expect(
+        clippy::as_conversions,
+        reason = "guarantees discriminant layout, and as is the only way to cast enum -> primitive"
+    )]
     fn as_u8(self) -> u8 {
         self as u8
     }
@@ -1026,10 +1030,10 @@ impl<'a> Decode<'a> for Timestamp {
 
         let timestamp = src.read_u32();
 
-        let milliseconds = timestamp.get_bits(..10) as u16;
-        let seconds = timestamp.get_bits(10..16) as u8;
-        let minutes = timestamp.get_bits(16..22) as u8;
-        let hours = timestamp.get_bits(22..) as u16;
+        let milliseconds = u16::try_from(timestamp.get_bits(..10)).expect("value fits into u16");
+        let seconds = u8::try_from(timestamp.get_bits(10..16)).expect("value fits into u8");
+        let minutes = u8::try_from(timestamp.get_bits(16..22)).expect("value fits into u8");
+        let hours = u16::try_from(timestamp.get_bits(22..)).expect("value fits into u16");
 
         Ok(Self {
             milliseconds,

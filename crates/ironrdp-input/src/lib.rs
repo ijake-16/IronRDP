@@ -24,6 +24,10 @@ pub enum MouseButton {
 }
 
 impl MouseButton {
+    #[expect(
+        clippy::as_conversions,
+        reason = "guarantees discriminant layout, and as is the only way to cast enum -> primitive"
+    )]
     pub fn as_idx(self) -> usize {
         self as usize
     }
@@ -78,7 +82,11 @@ impl Scancode {
     pub const fn from_u16(scancode: u16) -> Self {
         let extended = scancode & 0xE000 == 0xE000;
 
-        #[expect(clippy::cast_possible_truncation)] // truncating on purpose
+        #[expect(
+            clippy::as_conversions,
+            clippy::cast_possible_truncation,
+            reason = "truncating on purpose"
+        )]
         let code = scancode as u8;
 
         Self { code, extended }
@@ -86,6 +94,7 @@ impl Scancode {
 
     pub fn as_idx(self) -> usize {
         if self.extended {
+            #[expect(clippy::missing_panics_doc, reason = "unreachable panic (integer upcast)")]
             usize::from(self.code).checked_add(256).expect("never overflow")
         } else {
             usize::from(self.code)
@@ -343,6 +352,7 @@ impl Database {
         let mut events = SmallVec::new();
 
         for idx in self.mouse_buttons.iter_ones() {
+            #[expect(clippy::missing_panics_doc, reason = "unreachable panic (checked integer downcast)")]
             let button = MouseButton::from_idx(idx).expect("in-range index");
 
             let event = match MouseButtonFlags::from(button) {
@@ -365,9 +375,12 @@ impl Database {
         // The keyboard bit array size is 512.
         for idx in self.keyboard.iter_ones() {
             let (scancode, extended) = if idx >= 256 {
+                #[expect(clippy::missing_panics_doc, reason = "unreachable panic (checked integer underflow)")]
                 let extended_code = idx.checked_sub(256).expect("never underflow");
+                #[expect(clippy::missing_panics_doc, reason = "unreachable panic (checked integer downcast)")]
                 (u8::try_from(extended_code).expect("always in the range"), true)
             } else {
+                #[expect(clippy::missing_panics_doc, reason = "unreachable panic (checked integer downcast)")]
                 (u8::try_from(idx).expect("always in the range"), false)
             };
 

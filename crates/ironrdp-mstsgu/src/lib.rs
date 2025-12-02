@@ -144,7 +144,7 @@ impl GwClient {
             .header(hyper::header::SEC_WEBSOCKET_VERSION, "13")
             .header(hyper::header::SEC_WEBSOCKET_KEY, generate_key())
             .body(http_body_util::Empty::<Bytes>::new())
-            .expect("Failed to build request");
+            .map_err(|e| custom_err!("failed to build request", e))?;
 
         let stream = hyper_util::rt::tokio::TokioIo::new(stream);
         let (mut sender, mut conn) = hyper::client::conn::http1::handshake(stream)
@@ -200,8 +200,7 @@ impl GwClient {
 
         let work = tokio::spawn(async move {
             let iv = Duration::from_secs(15 * 60);
-            let mut keepalive_interval: tokio::time::Interval =
-                tokio::time::interval_at(tokio::time::Instant::now() + iv, iv);
+            let mut keepalive_interval = tokio::time::interval_at(tokio::time::Instant::now() + iv, iv);
 
             loop {
                 let mut wsbuf = [0u8; 8192];
@@ -222,7 +221,8 @@ impl GwClient {
                         let mut cur = ReadCursor::new(&msg);
                         let hdr = PktHdr::decode(&mut cur).map_err(|e| custom_err!("Header Decode", e))?;
 
-                        assert!(cur.len() >= hdr.length as usize - hdr.size());
+                        let header_length = usize::try_from(hdr.length).map_err(|_| Error::new("PktHdr too big", GwErrorKind::Decode))?;
+                        assert!(cur.len() >= header_length - hdr.size());
                         match hdr.ty {
                             PktTy::Keepalive => {
                                 continue;
@@ -288,7 +288,10 @@ impl GwConn {
         let mut cur = ReadCursor::new(&msg);
 
         let hdr = PktHdr::decode(&mut cur).map_err(|_| Error::new("PktHdr", GwErrorKind::Decode))?;
-        if cur.len() != hdr.length as usize - hdr.size() {
+
+        let header_length =
+            usize::try_from(hdr.length).map_err(|_| Error::new("PktHdr too big", GwErrorKind::Decode))?;
+        if cur.len() != header_length - hdr.size() {
             return Err(Error::new("read_packet", GwErrorKind::PacketEof));
         }
 
@@ -316,7 +319,7 @@ impl GwConn {
     async fn tunnel(&mut self) -> Result<(), Error> {
         let req = TunnelReqPkt {
             // Havent seen any server working without this.
-            caps: HttpCapsTy::MessagingConsentSign as u32,
+            caps: HttpCapsTy::MessagingConsentSign.as_u32(),
             fields_present: 0,
             ..TunnelReqPkt::default()
         };
@@ -351,7 +354,7 @@ impl GwConn {
         let resp: TunnelAuthRespPkt =
             TunnelAuthRespPkt::decode(&mut cur).map_err(|_| Error::new("TunnelAuth", GwErrorKind::Decode))?;
 
-        if resp.error_code != 0 {
+        if resp.error_code() != 0 {
             return Err(Error::new("TunnelAuth", GwErrorKind::Connect));
         }
         Ok(())
@@ -370,7 +373,7 @@ impl GwConn {
         let mut cur: ReadCursor<'_> = ReadCursor::new(&bytes);
         let resp: ChannelResp =
             ChannelResp::decode(&mut cur).map_err(|_| Error::new("ChannelResp", GwErrorKind::Decode))?;
-        if resp.error_code != 0 {
+        if resp.error_code() != 0 {
             return Err(Error::new("ChannelCreate", GwErrorKind::Connect));
         }
         assert!(cur.eof());

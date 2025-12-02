@@ -69,7 +69,7 @@ struct SessionBuilderInner {
 
     use_display_control: bool,
     enable_credssp: bool,
-    outbound_message_size_limit: Option<u32>,
+    outbound_message_size_limit: Option<usize>,
 }
 
 impl Default for SessionBuilderInner {
@@ -216,8 +216,8 @@ impl iron_remote_desktop::SessionBuilder for SessionBuilder {
             |enable_credssp: bool| { self.0.borrow_mut().enable_credssp = enable_credssp };
             |outbound_message_size_limit: f64| {
                 let limit = if outbound_message_size_limit >= 0.0 && outbound_message_size_limit <= f64::from(u32::MAX) {
-                    #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    { outbound_message_size_limit as u32 }
+                    #[expect(clippy::as_conversions, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    { outbound_message_size_limit as usize }
                 } else {
                     warn!(outbound_message_size_limit, "Invalid outbound message size limit; fallback to unlimited");
                     0 // Fallback to no limit for invalid values.
@@ -722,7 +722,7 @@ impl iron_remote_desktop::Session for Session {
                                 desktop_size,
                                 enable_server_pointer,
                                 pointer_software_rendering,
-                            } = box_connection_activation.state
+                            } = box_connection_activation.connection_activation_state()
                             {
                                 debug!("Deactivation-Reactivation Sequence completed");
                                 image = DecodedImage::new(PixelFormat::RgbA32, desktop_size.width, desktop_size.height);
@@ -781,7 +781,7 @@ impl iron_remote_desktop::Session for Session {
         use ironrdp::pdu::input::fast_path::FastPathInput;
 
         let event = ironrdp::input::synchronize_event(scroll_lock, num_lock, caps_lock, kana_lock);
-        let fastpath_input = FastPathInput(vec![event]);
+        let fastpath_input = FastPathInput::single(event);
 
         let frame = ironrdp::core::encode_vec(&fastpath_input).context("FastPathInput encoding")?;
 
@@ -899,20 +899,20 @@ fn build_config(
 async fn writer_task(
     rx: mpsc::UnboundedReceiver<Vec<u8>>,
     rdp_writer: WriteHalf<WebSocket>,
-    outbound_limit: Option<u32>,
+    outbound_limit: Option<usize>,
 ) {
     debug!("writer task started");
 
     async fn inner(
         mut rx: mpsc::UnboundedReceiver<Vec<u8>>,
         mut rdp_writer: WriteHalf<WebSocket>,
-        outbound_limit: Option<u32>,
+        outbound_limit: Option<usize>,
     ) -> anyhow::Result<()> {
         while let Some(frame) = rx.next().await {
             match outbound_limit {
-                Some(max_size) if frame.len() > max_size as usize => {
+                Some(max_size) if frame.len() > max_size => {
                     // Send in chunks.
-                    for chunk in frame.chunks(max_size as usize) {
+                    for chunk in frame.chunks(max_size) {
                         rdp_writer.write_all(chunk).await.context("couldn't write chunk")?;
                         rdp_writer.flush().await.context("couldn't flush chunk")?;
                     }
@@ -1153,8 +1153,7 @@ where
     }
 }
 
-#[expect(clippy::cast_sign_loss)]
-#[expect(clippy::cast_possible_truncation)]
+#[expect(clippy::as_conversions, clippy::cast_sign_loss, clippy::cast_possible_truncation)]
 fn f64_to_u16_saturating_cast(value: f64) -> u16 {
     value as u16
 }

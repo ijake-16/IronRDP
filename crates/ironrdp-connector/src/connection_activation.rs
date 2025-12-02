@@ -1,7 +1,7 @@
 use core::mem;
 
+use ironrdp_pdu::rdp;
 use ironrdp_pdu::rdp::capability_sets::CapabilitySet;
-use ironrdp_pdu::rdp::{self};
 use tracing::{debug, warn};
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
 /// [Server Deactivate All PDU]: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpbcgr/8a29971a-df3c-48da-add2-8ed9a05edc89
 #[derive(Debug, Clone)]
 pub struct ConnectionActivationSequence {
-    pub state: ConnectionActivationState,
+    state: ConnectionActivationState,
     config: Config,
 }
 
@@ -35,6 +35,11 @@ impl ConnectionActivationSequence {
             },
             config,
         }
+    }
+
+    /// Returns the current state as a district type, rather than `&dyn State` provided by [`Self::state`].
+    pub fn connection_activation_state(&self) -> ConnectionActivationState {
+        self.state
     }
 
     #[must_use]
@@ -215,7 +220,7 @@ impl Sequence for ConnectionActivationSequence {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub enum ConnectionActivationState {
     #[default]
     Consumed,

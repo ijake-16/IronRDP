@@ -221,7 +221,7 @@ impl Processor {
 
                         let decoded_pointer = Arc::new(
                             DecodedPointer::decode_color_pointer_attribute(&pointer, bitmap_target)
-                                .expect("Failed to decode color pointer attribute"),
+                                .map_err(|e| SessionError::custom("failed to decode color pointer attribute", e))?,
                         );
 
                         let _ = self
@@ -261,7 +261,7 @@ impl Processor {
 
                         let decoded_pointer = Arc::new(
                             DecodedPointer::decode_pointer_attribute(&pointer, bitmap_target)
-                                .expect("Failed to decode pointer attribute"),
+                                .map_err(|e| SessionError::custom("failed to decode pointer attribute", e))?,
                         );
 
                         let _ = self
@@ -279,7 +279,7 @@ impl Processor {
 
                         let decoded_pointer: Arc<DecodedPointer> = Arc::new(
                             DecodedPointer::decode_large_pointer_attribute(&pointer, bitmap_target)
-                                .expect("Failed to decode large pointer attribute"),
+                                .map_err(|e| SessionError::custom("failed to decode large pointer attribute", e))?,
                         );
 
                         let _ = self
@@ -298,7 +298,7 @@ impl Processor {
                 // FIXME: This seems to be a way of special-handling the error case in FastPathUpdate::decode_cursor_with_code
                 // to ignore the unsupported update PDUs, but this is a fragile logic and the rationale behind it is not
                 // obvious.
-                if let DecodeErrorKind::InvalidField { field, reason } = e.kind {
+                if let DecodeErrorKind::InvalidField { field, reason } = e.kind() {
                     warn!(field, reason, "Received invalid Fast-Path update");
                     processor_updates.push(UpdateKind::None);
                 } else {

@@ -15,7 +15,7 @@ impl IronError {
 
 impl iron_remote_desktop::IronError for IronError {
     fn backtrace(&self) -> String {
-        format!("{:?}", self.source)
+        format!("{:#}", self.source)
     }
 
     fn kind(&self) -> IronErrorKind {
@@ -27,7 +27,7 @@ impl From<connector::ConnectorError> for IronError {
     fn from(e: connector::ConnectorError) -> Self {
         use sspi::credssp::NStatusCode;
 
-        let kind = match e.kind {
+        let kind = match e.kind() {
             ConnectorErrorKind::Credssp(sspi::Error {
                 nstatus: Some(NStatusCode::WRONG_PASSWORD),
                 ..

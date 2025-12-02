@@ -23,12 +23,14 @@ impl<'a> SegmentedDataPdu<'a> {
         match descriptor {
             SegmentedDescriptor::Single => Ok(SegmentedDataPdu::Single(BulkEncodedData::from_buffer(buffer)?)),
             SegmentedDescriptor::Multipart => {
-                let segment_count = buffer.read_u16::<LittleEndian>()? as usize;
-                let uncompressed_size = buffer.read_u32::<LittleEndian>()? as usize;
+                let segment_count = usize::from(buffer.read_u16::<LittleEndian>()?);
+                let uncompressed_size = usize::try_from(buffer.read_u32::<LittleEndian>()?)
+                    .map_err(|_| ZgfxError::InvalidIntegralConversion("segments uncompressed size"))?;
 
                 let mut segments = Vec::with_capacity(segment_count);
                 for _ in 0..segment_count {
-                    let size = buffer.read_u32::<LittleEndian>()? as usize;
+                    let size = usize::try_from(buffer.read_u32::<LittleEndian>()?)
+                        .map_err(|_| ZgfxError::InvalidIntegralConversion("segment data size"))?;
                     let (segment_data, new_buffer) = buffer.split_at(size);
                     buffer = new_buffer;
 
@@ -84,7 +86,7 @@ bitflags! {
 
 #[cfg(test)]
 mod test {
-    use lazy_static::lazy_static;
+    use std::sync::LazyLock;
 
     use super::*;
 
@@ -111,29 +113,30 @@ mod test {
         0x02, // the third segment: data
     ];
 
-    lazy_static! {
-        static ref SINGLE_SEGMENTED_DATA_PDU: SegmentedDataPdu<'static> = SegmentedDataPdu::Single(BulkEncodedData {
+    static SINGLE_SEGMENTED_DATA_PDU: LazyLock<SegmentedDataPdu<'static>> = LazyLock::new(|| {
+        SegmentedDataPdu::Single(BulkEncodedData {
             compression_flags: CompressionFlags::COMPRESSED,
             data: &SINGLE_SEGMENTED_DATA_PDU_BUFFER[2..],
-        });
-        static ref MULTIPART_SEGMENTED_DATA_PDU: SegmentedDataPdu<'static> = SegmentedDataPdu::Multipart {
+        })
+    });
+    static MULTIPART_SEGMENTED_DATA_PDU: LazyLock<SegmentedDataPdu<'static>> =
+        LazyLock::new(|| SegmentedDataPdu::Multipart {
             uncompressed_size: 0x2B,
             segments: vec![
                 BulkEncodedData {
                     compression_flags: CompressionFlags::empty(),
-                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[12..12 + 16]
+                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[12..12 + 16],
                 },
                 BulkEncodedData {
                     compression_flags: CompressionFlags::empty(),
-                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[33..33 + 13]
+                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[33..33 + 13],
                 },
                 BulkEncodedData {
                     compression_flags: CompressionFlags::COMPRESSED,
-                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[51..]
+                    data: &MULTIPART_SEGMENTED_DATA_PDU_BUFFER[51..],
                 },
             ],
-        };
-    }
+        });
 
     #[test]
     fn from_buffer_correctly_parses_zgfx_single_segmented_data_pdu() {

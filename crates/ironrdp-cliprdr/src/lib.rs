@@ -1,10 +1,6 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 #![doc(html_logo_url = "https://cdnweb.devolutions.net/images/projects/devolutions/logos/devolutions-icon-shadow.svg")]
 #![allow(clippy::arithmetic_side_effects)] // FIXME: remove
-#![allow(clippy::cast_lossless)] // FIXME: remove
-#![allow(clippy::cast_possible_truncation)] // FIXME: remove
-#![allow(clippy::cast_possible_wrap)] // FIXME: remove
-#![allow(clippy::cast_sign_loss)] // FIXME: remove
 
 pub mod backend;
 pub mod pdu;
@@ -32,16 +28,12 @@ pub type CliprdrSvcMessages<R> = SvcProcessorMessages<Cliprdr<R>>;
 
 #[derive(Debug)]
 enum ClipboardError {
-    UnimplementedPdu { pdu: &'static str },
     FormatListRejected,
 }
 
 impl core::fmt::Display for ClipboardError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            ClipboardError::UnimplementedPdu { pdu } => {
-                write!(f, "received clipboard PDU `{pdu}` is not implemented")
-            }
             ClipboardError::FormatListRejected => write!(f, "sent format list was rejected"),
         }
     }
@@ -337,9 +329,10 @@ impl<R: Role> SvcProcessor for Cliprdr<R> {
                 self.backend.on_file_contents_response(response);
                 Ok(Vec::new())
             }
-            _ => self.handle_error_transition(ClipboardError::UnimplementedPdu {
-                pdu: pdu.message_name(),
-            }),
+            ClipboardPdu::TemporaryDirectory(_) => {
+                // do nothing
+                Ok(Vec::new())
+            }
         }
     }
 

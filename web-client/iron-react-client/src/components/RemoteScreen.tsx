@@ -3,11 +3,9 @@ import { useSession } from '../contexts/SessionContext';
 import type { IronRemoteDesktopElement } from '../types';
 import './RemoteScreen.css';
 
-// TODO: Uncomment after building WASM
-// import { Backend } from '/iron-remote-desktop/iron-remote-desktop-rdp.js';
-
-// Temporary placeholder until WASM is built
-declare const Backend: any;
+// Import the RDP Backend module (WASM)
+// This uses the alias defined in vite.config.ts pointing to ../iron-remote-desktop-rdp/dist/
+import { Backend } from 'iron-remote-desktop-rdp';
 
 interface RemoteScreenProps {
   visible: boolean;
@@ -23,10 +21,17 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
 
   useEffect(() => {
     const el = desktopRef.current;
-    if (!el) return;
+    if (!el) {
+      console.warn('[RemoteScreen] iron-remote-desktop element not found');
+      return;
+    }
+
+    console.log('[RemoteScreen] Setting up ready event listener on iron-remote-desktop element');
 
     const handleReady = (e: Event) => {
       const event = e as CustomEvent;
+      console.log('[RemoteScreen] Received "ready" event from iron-remote-desktop');
+      console.log('[RemoteScreen] UserInteraction service initialized successfully');
       setUserInteraction(event.detail.irgUserInteraction);
     };
 
@@ -95,14 +100,13 @@ const RemoteScreen: React.FC<RemoteScreenProps> = ({ visible }) => {
     userInteraction.setKeyboardUnicodeMode(checked);
   };
 
-  if (!visible) {
-    return null;
-  }
-
   
 
+  // Note: We always render the iron-remote-desktop element (hidden when not visible)
+  // so that it can initialize and fire the 'ready' event to set up userInteraction.
+  // This follows the same pattern as the Svelte client.
   return (
-    <div className="remote-screen-container">
+    <div className={`remote-screen-container ${!visible ? 'hidden' : ''}`}>
       <div className="toolbar">
         <button onClick={toggleFullScreen} className={isFullscreen ? 'active' : ''}>
           {isFullscreen ? (

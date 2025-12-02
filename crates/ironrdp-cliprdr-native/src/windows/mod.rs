@@ -162,7 +162,7 @@ impl WinClipboard {
         // SAFETY: low-level WinAPI call
         let atom = unsafe { RegisterClassA(&wc) };
         if atom == 0 {
-            return Err(Error::from_win32())?;
+            return Err(WinCliprdrError::from(Error::from_thread()));
         }
 
         // SAFETY: low-level WinAPI call
@@ -184,7 +184,7 @@ impl WinClipboard {
         };
 
         if window.is_invalid() {
-            return Err(Error::from_win32())?;
+            return Err(WinCliprdrError::from(Error::from_thread()));
         }
         // Init clipboard processing for WinAPI event loop
         //
@@ -200,8 +200,14 @@ impl WinClipboard {
         //
         // SAFETY: `window` is a valid window handle, `clipboard_subproc` is in the static memory,
         // `ctx` is valid and its ownership is transferred to the subclass via `into_raw`.
-        let winapi_result =
-            unsafe { SetWindowSubclass(window, Some(clipboard_subproc), 0, Box::into_raw(ctx) as usize) };
+        let winapi_result = unsafe {
+            SetWindowSubclass(
+                window,
+                Some(clipboard_subproc),
+                0,
+                Box::into_raw(ctx).expose_provenance(),
+            )
+        };
 
         if winapi_result == FALSE {
             return Err(WinCliprdrError::WindowSubclass);
