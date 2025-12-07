@@ -38,6 +38,11 @@
   transform: translateY(0);
 }
 
+.toolbar button.active {
+  background: #667eea;
+  box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

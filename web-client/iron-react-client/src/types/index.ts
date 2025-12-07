@@ -19,6 +19,7 @@ export interface UserInteraction {
   shutdown: () => void;
   setKeyboardUnicodeMode: (enabled: boolean) => void;
   setCursorStyleOverride: (style: string | null) => void;
+  resize: (width: number, height: number) => void;
 }
 
 export interface ConfigBuilder {
